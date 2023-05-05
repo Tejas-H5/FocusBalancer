@@ -49,8 +49,6 @@ def key_handler():
     while app_is_running:
         key = keyboard.read_key()
 
-        print(key)
-
         # Sometimes we just want to listen to that thing in the background, or play that video.
         # So these keys are getting ignored.
         if key != "play/pause media" and key != "space":
