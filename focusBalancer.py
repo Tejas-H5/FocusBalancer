@@ -3,7 +3,7 @@ from pynput import mouse
 import threading
 import time
 
-# ---- external code: 
+# ---- Using some stackoverflow code to detect if media is currently playing. 
 # https://stackoverflow.com/questions/59636713/check-if-audio-playing-with-python-on-windows-10
 # https://stackoverflow.com/questions/69610231/why-cant-pip-find-winrt
 
@@ -34,34 +34,31 @@ def tryPlay():
     if session != None:
         session.try_play_async()
 
-def setMediaState(state):
-    # TODO
-    pass
-
 # ---- end external code
 
 
 app_is_running = True
-is_active = 0
+active_decay_timer = 0
 def activate():
-    global is_active
-    is_active = 1
+    global active_decay_timer
+    active_decay_timer = 1
 
-last_is_active = False
-was_playing = False
-delta_time = 1 / 60
-deactivate_speed = 1
-
-# Start the key detection thread to set is_active if we pressed any key anywhere
+# Start the key detection thread to activate if we pressed any key anywhere
 def key_handler():
-    global is_active
+    global active_decay_timer
     while app_is_running:
         key = keyboard.read_key()
-        activate()
+
+        print(key)
+
+        # Sometimes we just want to listen to that thing in the background, or play that video.
+        # So these keys are getting ignored.
+        if key != "play/pause media" and key != "space":
+            activate()
+
 
 thread = threading.Thread(target=key_handler, daemon=True)
 thread.start()
-
 
 def on_move(x, y):
     activate()
@@ -72,30 +69,34 @@ def on_click(x, y, button, pressed):
 def on_scroll(x, y, dx, dy):
     activate()
 
-# Collect events until released
+# Also activate whenever we do anything with the mouse. 
+# For some reason, this works outside of the application, unlike pyinput's keyboard
 mouse_listener = mouse.Listener(
         on_move=on_move,
         on_click=on_click,
         on_scroll=on_scroll)
 mouse_listener.start()
-    
 
-# main loop
+
+was_active = False
+was_playing = False
+delta_time = 1 / 30
+deactivate_speed = 1
 print("Main loop started. Use CTRL + C to exit")
 while True:
     time.sleep(delta_time)
 
-    if is_active > 0:
-        is_active -= deactivate_speed * delta_time
+    if active_decay_timer > 0:
+        active_decay_timer -= deactivate_speed * delta_time
 
-    this_is_active = is_active > 0
-    if last_is_active != this_is_active:
-        last_is_active = this_is_active
+    is_active = active_decay_timer > 0
+    if was_active != is_active:
+        was_active = is_active
         
         # Very counter intuitive, but we actually want to 
         # pause the video when we aren't typing, and play the video when we are typing.
         # See the readme for more info
-        if not this_is_active:
+        if not is_active:
             was_playing = isPlaying()
             tryPause()
         else:
