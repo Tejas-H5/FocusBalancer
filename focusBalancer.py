@@ -2,6 +2,7 @@ import keyboard
 from pynput import mouse
 import threading
 import time
+import sys
 
 # ---- Using some stackoverflow code to detect if media is currently playing. 
 # https://stackoverflow.com/questions/59636713/check-if-audio-playing-with-python-on-windows-10
@@ -34,8 +35,8 @@ def tryPlay():
     if session != None:
         session.try_play_async()
 
-# ---- end external code
 
+# ---- end external code
 
 app_is_running = True
 active_decay_timer = 0
@@ -75,32 +76,61 @@ mouse_listener = mouse.Listener(
         on_scroll=on_scroll)
 mouse_listener.start()
 
-
 was_active = False
 was_playing = False
 delta_time = 1 / 30
 deactivate_speed = 1
-print("Main loop started. Use CTRL + C to exit")
+
+paused = False
+
+inverted = False
+if len(sys.argv) == 2 and sys.argv[1].startswith("i"):
+    inverted = True
+
+def input_check_loop():
+    global is_active, was_active, was_playing, active_decay_timer
+    print("Focus balancer loop started. Use CTRL + C to exit")
+
+    while app_is_running:
+        time.sleep(delta_time)
+
+        if paused:
+            continue
+
+        if active_decay_timer > 0:
+            active_decay_timer -= deactivate_speed * delta_time
+
+        is_active = active_decay_timer > 0
+        if was_active != is_active:
+            was_active = is_active
+            
+            # By default, we pause the video when we are idling, and play it when we aren't.
+            # It sounds a bit counter intuitive, see the readme for a dissertation on the topic
+            if (not is_active) != inverted:
+                was_playing = isPlaying()
+                tryPause()
+            else:
+                if was_playing:
+                    tryPlay()
+
+thread2 = threading.Thread(target=input_check_loop, daemon=True)    
+thread2.start()
+
 while True:
-    time.sleep(delta_time)
+    command = input("> ")
+    if command.startswith("invert"):
+        inverted = not inverted
+        print("inverted:", inverted)
+    elif command.startswith("pause"):
+        paused = not paused
+        print("paused:", paused)
+    elif command == "exit":
+        break
+    else:
+        print("unknown command -", command)
 
-    if active_decay_timer > 0:
-        active_decay_timer -= deactivate_speed * delta_time
-
-    is_active = active_decay_timer > 0
-    if was_active != is_active:
-        was_active = is_active
-        
-        # Very counter intuitive, but we actually want to 
-        # pause the video when we aren't typing, and play the video when we are typing.
-        # See the readme for more info
-        if not is_active:
-            was_playing = isPlaying()
-            tryPause()
-        else:
-            if was_playing:
-                tryPlay()
-
-# this code doesn't get reached lmao. But ideally it should
 app_is_running = False
 thread.join()
+thread2.join()
+
+print("Threads closed. See you next time")
