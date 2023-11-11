@@ -1,3 +1,7 @@
+Disclaimer: After trying this for a week, I have found that:
+- When I have the will to focus, this thing gets in the way
+- When I am unable to focus, this thing doesn't really help that much at all. The idea was that if I was moving so slowly that I was constantly tripping this, then it would be time to take a break and then come back refreshed. But what actualy happens is that I end up doing a bunch of comphensatory cursor/keyboard movements to keep the system from tripping and pausing the music/podcast/whatever. So it mostly doesn't work
+
 # FocusBalancer
 
 This is a python script that is constantly listening to your keystrokes and mouse clicks/scrolls/movements while it is running, and will pause the current media that is playing in the background when you aren't doing anything, and play the current media when you are. If nothing is already playing in the background, it does nothing.
