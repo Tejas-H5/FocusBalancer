@@ -4,6 +4,10 @@ import threading
 import time
 import sys
 
+timer_duration_str = input("How much time spent idling would you consider to be too long? \n(type a number, in seconds): ")
+# timer_duration_str = "1"
+timer_duration = float(timer_duration_str)
+
 # ---- Using some stackoverflow code to detect if media is currently playing. 
 # https://stackoverflow.com/questions/59636713/check-if-audio-playing-with-python-on-windows-10
 # https://stackoverflow.com/questions/69610231/why-cant-pip-find-winrt
@@ -18,6 +22,7 @@ async def getMediaSession():
 def mediaIs(state):
     session = asyncio.run(getMediaSession())
     if session == None:
+        print("couldn't detect media state - no session found!")
         return False
     
     return int(wmc.GlobalSystemMediaTransportControlsSessionPlaybackStatus[state]) == session.get_playback_info().playback_status #get media state enum and compare to current main media session state
@@ -27,13 +32,17 @@ def isPlaying():
 
 def tryPause():
     session = asyncio.run(getMediaSession())
-    if session != None:
-        session.try_pause_async()
+    if session == None:
+        print("couldn't pause - no media session found!")
+        return
+    session.try_pause_async()
 
 def tryPlay():
     session = asyncio.run(getMediaSession())
-    if session != None:
-        session.try_play_async()
+    if session == None:
+        print("couldn't resume - no media session found!")
+        return
+    session.try_play_async()
 
 
 # ---- end external code
@@ -42,7 +51,7 @@ app_is_running = True
 active_decay_timer = 0
 def activate():
     global active_decay_timer
-    active_decay_timer = 1
+    active_decay_timer = timer_duration
 
 # Start the key detection thread to activate if we pressed any key anywhere
 def key_handler():
@@ -79,7 +88,6 @@ mouse_listener.start()
 was_active = False
 was_playing = False
 delta_time = 1 / 30
-deactivate_speed = 1
 
 paused = False
 
@@ -98,7 +106,7 @@ def input_check_loop():
             continue
 
         if active_decay_timer > 0:
-            active_decay_timer -= deactivate_speed * delta_time
+            active_decay_timer -= delta_time
 
         is_active = active_decay_timer > 0
         if was_active != is_active:
@@ -106,6 +114,7 @@ def input_check_loop():
             
             # By default, we pause the video when we are idling, and play it when we aren't.
             # It sounds a bit counter intuitive, see the readme for a dissertation on the topic
+            # TODO: make this work for VLC media player
             if (not is_active) != inverted:
                 was_playing = isPlaying()
                 tryPause()
